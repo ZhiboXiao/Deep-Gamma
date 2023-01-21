@@ -139,7 +139,10 @@ class Wnet(nn.Module):
             *[DecoderBlock(8, 4, self.skip_size[0]), DecoderBlock(4, 4, self.skip_size[1]),
               DecoderBlock(4, 4, self.skip_size[2])])
 
-        self.conv3x3 = conv(4, depth, 1, bias=True, pad='reflection')
+        self.conv_gamma = conv(64, 1, 1, bias=True, pad='reflection')
+        # self.conv_beta = conv(64, 1, 1, bias=True, pad='reflection')
+        self.pooling = torch.nn.AdaptiveAvgPool2d(1)
+
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -171,12 +174,16 @@ class Wnet(nn.Module):
         dots = torch.einsum('b h w i d, b h w j d -> b h w i j', q, k) * self.scale
         dots += self.pos_embedding[
             self.relative_indices[:, :, 0].type(torch.long), self.relative_indices[:, :, 1].type(torch.long)]
-        gamma = dots[:, 1, :, :, :]
-        beta = dots[:, 0, :, :, :]
-        gamma = self.sigmoid(gamma)
-        gamma = torch.mean(gamma)
-        beta = 1 + 2 * self.sigmoid(beta)
-        beta = torch.mean(beta)
+        gamma_o = dots[:, 1, :, :, :]
+        beta_o = dots[:, 0, :, :, :]
+        # gamma = self.conv_gamma(gamma)
+        # beta = self.conv_gamma(beta)
+        gamma = self.sigmoid(gamma_o)
+        gamma = self.pooling(gamma)
+        gamma = torch.mean(gamma, dim=1, keepdim=True)
+        beta = 3 * self.sigmoid(beta_o)
+        beta = self.pooling(beta)
+        beta = torch.mean(beta, dim=1, keepdim=True)
         # v = self.sigmoid(v)
         # out = torch.einsum('b h w i j, b h w j d -> b h w i d', attn, v)
 
@@ -205,12 +212,12 @@ class Wnet(nn.Module):
         # output1 = self.conv3x3(decoder_output)
         # output1 = output1+input
         # output1 = self.sigmoid(output1)
-        return beta, gamma
+        return beta, gamma, x, dots
 
 
 if __name__ == '__main__':
-    inputs_a = torch.randn(1, 1, 1024, 1024).cuda()
-    model = Wnet(1).cuda()
+    inputs_a = torch.randn(1, 3, 1024, 1024).cuda()
+    model = Wnet(3).cuda()
     out = model(inputs_a)
-    print(out.shape)
+    print(out)
 

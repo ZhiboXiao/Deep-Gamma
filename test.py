@@ -12,12 +12,15 @@ from fvcore.nn import FlopCountAnalysis, parameter_count_table
 from multi_read_data import MemoryFriendlyLoader_test
 from torchsummary import summary
 from model.model import *
+import time
+import scipy.io as scio
+
 
 parser = argparse.ArgumentParser("SCI")
 parser.add_argument('--data_path', type=str, default='./data/data3/',
                     help='location of the data corpus')
 parser.add_argument('--save_path', type=str, default='./results/data3', help='location of the data corpus')
-parser.add_argument('--model', type=str, default='./weights/weights_116.pt', help='location of the data corpus')
+parser.add_argument('--model', type=str, default='./weights/weights_6.pth', help='location of the data corpus')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--seed', type=int, default=2, help='random seed')
 
@@ -50,6 +53,13 @@ def save_images_gray(tensor, path):
     im = Image.fromarray(np.clip(image_numpy * 255.0, 0, 255.0).astype('uint8'))
     im.save(path, 'png')
 
+def save_mat(tensor,path, name):
+    tensor = tensor.squeeze(0)
+    # tensor = torch.mean(tensor, 0)
+    tensor = torch.mean(tensor, 0)
+    tensor = tensor.cpu().detach().numpy()
+    path = path + name + '.mat'
+    scio.savemat(path, {'fl': tensor})
 
 def main():
     if not torch.cuda.is_available():
@@ -59,7 +69,7 @@ def main():
     # model = Finetunemodel(args.model)
     model = Network().cuda()
     model.load_state_dict(torch.load(
-        './weights/weights_55.pth',
+        args.model,
         map_location=lambda storage, loc: storage))
     # model = model.cuda()
     model.eval()
@@ -68,18 +78,14 @@ def main():
             input = Variable(input, volatile=True).cuda()
             input = F.interpolate(input, size=[1024, 1024], mode="bilinear")
             image_name = image_name[0].split('\\')[-1].split('.')[0]
+            time1 = time.time()
             enhance_image, i, i_enhance, r, i_h = model(input, input)
+            time2 = time.time()
+            print(time2-time1)
             u_name = '%s.png' % (image_name)
             print('processing {}'.format(u_name))
             u_path = save_path + '/' + u_name
-            u_path1 = save_path + '/i' + u_name
-            u_path2 = save_path + '/i_e' + u_name
-            u_path3 = save_path + '/r' + u_name
-            # out1 = torch.cat([input[:, 0, :, :].unsqueeze(1), input[:, 1, :, :].unsqueeze(1), out], 1)
             save_images(enhance_image, u_path)
-            save_images_gray(i, u_path1)
-            save_images_gray(i_enhance, u_path2)
-            save_images(r, u_path3)
 
 
 

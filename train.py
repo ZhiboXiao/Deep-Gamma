@@ -20,6 +20,7 @@ import torch.nn.functional as F
 import cv2
 
 from histloss import HistogramLoss
+from skimage.metrics.simple_metrics import peak_signal_noise_ratio as compare_psnr
 
 
 parser = argparse.ArgumentParser("SCI")
@@ -27,7 +28,7 @@ parser.add_argument('--batch_size', type=int, default=2, help='batch size')
 parser.add_argument('--cuda', default=True, type=bool, help='Use CUDA to train model')
 parser.add_argument('--gpu', type=str, default='0', help='gpu device id')
 parser.add_argument('--seed', type=int, default=2, help='random seed')
-parser.add_argument('--epochs', type=int, default=1000, help='epochs')
+parser.add_argument('--epochs', type=int, default=50, help='epochs')
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--stage', type=int, default=3, help='epochs')
 parser.add_argument('--save', type=str, default='EXP/', help='location of the data corpus')
@@ -83,6 +84,13 @@ def save_images_gray(tensor, path):
     im = im.convert('L')
     im.save(path, 'png')
 
+def Psnr(img1, img2):
+   mse = np.mean( (img1 - img2) ** 2 )
+   if mse < 1.0e-10:
+      return 100
+   PIXEL_MAX = 1
+   return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+
 
 def main():
     if not torch.cuda.is_available():
@@ -117,11 +125,11 @@ def main():
     print(MB)
 
 
-    train_low_data_names = './data/train/'
+    train_low_data_names = './data/train/'      ######训练集位置
     TrainDataset = MemoryFriendlyLoader_train(img_dir=train_low_data_names, task='train')
 
 
-    test_low_data_names = './data/data3/'
+    test_low_data_names = './data/data3/'          ########测试集位置
     TestDataset = MemoryFriendlyLoader_test(img_dir=test_low_data_names, task='test')
 
     train_queue = torch.utils.data.DataLoader(
@@ -132,7 +140,8 @@ def main():
         TestDataset, batch_size=1,
         pin_memory=True, num_workers=0, shuffle=True, generator=torch.Generator(device='cuda'))
     total_step = 0
-
+    best_epoch = 0
+    best_psnr = 100
     for epoch in range(args.epochs):
         model.train()
         losses = []
@@ -140,22 +149,22 @@ def main():
             total_step += 1
             low = Variable(low, requires_grad=False).cuda()
             high = Variable(high, requires_grad=False).cuda()
+            # n, c, h, w = high.shape()
+            # maskh = torch.zeros(n, c, h, w)
+            # maskl = torch.zeros(n, c, h, w)
+
+            # high[:, :, 0:511] = 0
+            # low[:, :, 0:511] = 0
             high = F.interpolate(high, size=[1024, 1024], mode="bilinear")
             low = F.interpolate(low, size=[1024, 1024], mode="bilinear")
             optimizer.zero_grad()
             loss = model._loss(low, high, epoch)
-
-
-
-            # loss = 2 * ssim_loss(pred, high)
-            # loss += l2loss(pred, high)
-            # loss += 0.001*histloss(fea, fea1)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
 
             losses.append(loss.item())
-            logging.info('train-epoch %03d %03d %f', epoch, batch_idx, loss)
+            # logging.info('train-epoch %03d %03d %f', epoch, batch_idx, loss)
 
 
 
@@ -171,26 +180,27 @@ def main():
                 for _, (input, label, image_name) in enumerate(test_queue):
                     input = Variable(input, volatile=True).cuda()
                     label = Variable(label, volatile=True).cuda()
+                    input = F.interpolate(input, size=[1024, 1024], mode="bilinear")
+                    label = F.interpolate(label, size=[1024, 1024], mode="bilinear")
                     image_name = image_name[0].split('\\')[-1].split('.')[0]
                     out, i, i_e, r, i_h = model(input, label)
 
+                    out = (out - torch.min(out)/(torch.max(out)-torch.min(out)))
                     ssim += 1 - 2*ssim_loss(out, label)
-                    psnr += -psnr_loss(out, label)
+                    psnr += compare_psnr(out.cpu().numpy(), label.cpu().numpy(), data_range=1)
                     u_name = '%s.jpg' % (image_name)
 
                     image_path1 = image_path + str(epoch)
                     os.makedirs(image_path1, exist_ok=True)
                     u_path = image_path1 + '/' + u_name
-                    u_path1 = image_path1 + '/i' + u_name
-                    u_path2 = image_path1 + '/i_e' + u_name
-                    u_path3 = image_path1 + '/r' + u_name
-                    # out1 = torch.cat([input[:, 0, :, :].unsqueeze(1), input[:, 1, :, :].unsqueeze(1), out], 1)
                     save_images(out, u_path)
-                    save_images_gray(i, u_path1)
-                    save_images_gray(i_e, u_path2)
-                    save_images(r, u_path3)
+
             metric_path = image_path1 + '/ssim' + str(ssim/len(test_queue)) + 'psnr' + str(psnr/len(test_queue)) + '/'
+            if best_psnr > np.average(losses) and epoch != 0:
+                best_psnr = np.average(losses)
+                best_epoch = epoch
             os.makedirs(metric_path, exist_ok=True)
+        print(best_epoch)
 
 if __name__ == '__main__':
     main()

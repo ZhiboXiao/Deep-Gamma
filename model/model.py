@@ -130,7 +130,7 @@ class Network(nn.Module):
 
     def __init__(self):
         super(Network, self).__init__()
-        self.net3 = EnhanceNetwork(5, 8)#EnhanceNetwork(5, 8)
+        self.net3 = EnhanceNetwork(5, 16)#EnhanceNetwork(5, 8)
         self._criterion = LossFunction()
         self.gamma_net = Wnet(3)
         self.ssim_loss = kornia.losses.SSIMLoss(5)
@@ -145,15 +145,15 @@ class Network(nn.Module):
             m.weight.data.normal_(1., 0.02)
 
     def forward(self, input, label):
-        beta, gamma = self.gamma_net(input)
-        # print(beta, gamma)
+        beta, gamma, f_l, f_g = self.gamma_net(input)
+        print(beta, gamma)
         i = self.net3(input)
         i_h = self.net3(label)
         i_enhance = beta * torch.pow(i, gamma)
         enhance_image = i_enhance * (input / i)
         enhance_image = torch.clamp(enhance_image, 0, 1)
 
-        return enhance_image, i, i_enhance, input / i, i_h
+        return enhance_image, i, i_enhance, input / i, i_h, f_l, f_g
 
     def _loss(self, input, high, epoch):
         enhance_image, i, i_e, r, i_h = self(input, high)

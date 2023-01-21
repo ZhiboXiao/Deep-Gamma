@@ -32,8 +32,8 @@ class MemoryFriendlyLoader_train(torch.utils.data.Dataset):
         self.hr_image_filenames = [join(dir_high, x) for x in listdir(dir_high)]
         self.lr_image_filenames = [join(dir_low, x) for x in listdir(dir_high)]
 
-        dir_sti = self.low_img_dir + "Sti"
-        self.sti_image_filenames = [join(dir_sti, x) for x in listdir(dir_sti)]
+        # dir_sti = self.low_img_dir + "Sti"
+        # self.sti_image_filenames = [join(dir_sti, x) for x in listdir(dir_sti)]
 
         self.count = len(self.lr_image_filenames)# + len(self.sti_image_filenames)
 
@@ -50,25 +50,25 @@ class MemoryFriendlyLoader_train(torch.utils.data.Dataset):
         return img_norm
 
     def __getitem__(self, index):
-        if index < len(self.lr_image_filenames):
-            low_i = cv2.imread(self.lr_image_filenames[index])  # .convert('RGB')
-            low_1 = low_i[:, :, ::-1].copy()
-            low = self.trans(low_1)
-            high_in = cv2.imread(self.hr_image_filenames[index])  # .convert('RGB')
-            high_1 = high_in[:, :, ::-1].copy()
-            high = self.trans(high_1)
-            img_name = self.lr_image_filenames[index].split('\\')[-1]
-        else:
-            high_in = cv2.imread(self.sti_image_filenames[index-len(self.lr_image_filenames)])  # .convert('RGB')
-            high_1 = high_in[:, :, ::-1].copy()
-            high = self.trans(high_1)
-            img_name = self.sti_image_filenames[index-len(self.lr_image_filenames)].split('\\')[-1]
-
-            beta = 0.51  #0.1 * random.random() + 0.45
-            gamma = 1.78  #0.2 * random.random() + 1.7
-            low = beta * torch.pow(high, gamma)
-            # low_1 = low_i[:, :, ::-1].copy()
-            # low = self.trans(low_1)
+        # if index < len(self.lr_image_filenames):
+        low_i = cv2.imread(self.lr_image_filenames[index])  # .convert('RGB')
+        low_1 = low_i[:, :, ::-1].copy()
+        low = self.trans(low_1)
+        high_in = cv2.imread(self.hr_image_filenames[index])  # .convert('RGB')
+        high_1 = high_in[:, :, ::-1].copy()
+        high = self.trans(high_1)
+        img_name = self.lr_image_filenames[index].split('\\')[-1]
+        # else:
+        #     high_in = cv2.imread(self.sti_image_filenames[index-len(self.lr_image_filenames)])  # .convert('RGB')
+        #     high_1 = high_in[:, :, ::-1].copy()
+        #     high = self.trans(high_1)
+        #     img_name = self.sti_image_filenames[index-len(self.lr_image_filenames)].split('\\')[-1]
+        #
+        #     beta = 0.51  #0.1 * random.random() + 0.45
+        #     gamma = 1.78  #0.2 * random.random() + 1.7
+        #     low = beta * torch.pow(high, gamma)
+        #     # low_1 = low_i[:, :, ::-1].copy()
+        #     # low = self.trans(low_1)
 
         return low, high, img_name
 

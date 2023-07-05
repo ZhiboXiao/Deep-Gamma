@@ -1,5 +1,3 @@
-# Deep-Gamma
-Deep-Gamma
 # HorizonFlow Lab
 Welcome new members who has strong insight and motivition in AI and CS cross-fields. Feel free to email your CV/resume to our PI 
 @ [Yuanjie Gu](https://github.com/GuYuanjie).
@@ -8,9 +6,10 @@ Email1: yuanjie_gu@163.com
 Email2: yuanjie@horizonflow.top
 ![LOGO](https://github.com/yinghanguan/images/blob/main/LOGO.jpg)
 
-# PaddleOCR2RKNN
+# Deep-Gamma
+Deep-Gamma: Deep Low-Excitation Fluorescence Imaging Global Enhancement
 
-*转换官方paddleocr模型到瑞芯微板子上部署推理，提供全套部署流程以及c++推理程序。*
+*荧光图像增强*
 
 > **注意**: 目前只测试过PP-OVRv2 由于我的应用场景不需要方向分类模型，故不包括分类模型相关。
 

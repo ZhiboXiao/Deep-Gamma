@@ -11,7 +11,7 @@ Deep-Gamma: Deep Low-Excitation Fluorescence Imaging Global Enhancement
 
 *荧光图像增强*
 
-> **注意**: 目前只测试过PP-OVRv2 由于我的应用场景不需要方向分类模型，故不包括分类模型相关。
+> **文章下载链接**: https://opg.optica.org/ol/abstract.cfm?uri=ol-48-9-2496
 
 [![Downloads](https://img.shields.io/npm/dm/eslint-config-airbnb.svg)](https://www.npmjs.com/package/eslint-config-airbnb)
 [![Downloads](https://img.shields.io/npm/dm/eslint-config-airbnb-base.svg)](https://www.npmjs.com/package/eslint-config-airbnb-base)
